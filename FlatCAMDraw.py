@@ -815,6 +815,9 @@ class FlatCAMDraw(QtCore.QObject):
         ### Data
         self.active_tool = None
 
+        # FlatCAMGeometry object currently loaded in the editor (or None).
+        self.editing = None
+
         self.storage = FlatCAMDraw.make_storage()
         self.utility = []
 
@@ -918,6 +921,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.clear()
         # Restore the editor below the plotted objects when not editing.
         self.axes.set_zorder(0)
+        self.editing = None
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
@@ -971,6 +975,10 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.connect_canvas_event_handlers()
         self.select_tool("select")
+
+        # Remember which object is being edited so that operations such as
+        # generating a CNC job can commit the pending changes automatically.
+        self.editing = fcgeometry
 
         # Link shapes into editor.
         for shape in fcgeometry.flatten():

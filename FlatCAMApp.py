@@ -731,7 +731,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
-        geo = self.collection.get_active()
+        geo = self.draw.editing if self.draw.editing is not None \
+            else self.collection.get_active()
         if not isinstance(geo, FlatCAMGeometry):
             self.inform.emit("Select a Geometry Object to update.")
             return

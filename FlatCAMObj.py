@@ -1563,6 +1563,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         :return: None
         """
 
+        # If this object is currently open in the geometry editor, commit
+        # the pending changes first so newly drawn geometry is included in
+        # the generated job.
+        if self.app.draw.editing is self:
+            self.app.editor2geometry()
+
         outname = outname if outname is not None else self.options["name"] + "_cnc"
         z_cut = z_cut if z_cut is not None else self.options["cutz"]
         z_move = z_move if z_move is not None else self.options["travelz"]
