@@ -17,7 +17,7 @@ import re
 import webbrowser
 import os
 import tkinter
-from PyQt4 import Qt, QtCore, QtGui
+from PyQt6 import QtCore, QtGui, QtWidgets
 import time  # Just used for debugging. Double check before removing.
 from xml.dom.minidom import parseString as parse_xml_string
 from contextlib import contextmanager
@@ -213,9 +213,7 @@ class App(QtCore.QObject):
         QtCore.QObject.__init__(self)
 
         self.ui = FlatCAMGUI(self.version, name=self.version_name)
-        self.connect(self.ui,
-                     QtCore.SIGNAL("geomUpdate(int, int, int, int)"),
-                     self.save_geometry)
+        self.ui.geom_update.connect(self.save_geometry)
 
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
@@ -231,7 +229,7 @@ class App(QtCore.QObject):
         ##############
         self.recent = []
 
-        self.clipboard = QtGui.QApplication.clipboard()
+        self.clipboard = QtWidgets.QApplication.clipboard()
 
         self.proc_container = FCVisibleProcessContainer(self.ui.activity_view)
 
@@ -487,7 +485,7 @@ class App(QtCore.QObject):
         self.worker = Worker(self)
         self.thr1 = QtCore.QThread()
         self.worker.moveToThread(self.thr1)
-        self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
+        self.thr1.started.connect(self.worker.run)
         self.thr1.start()
 
         #### Check for updates ####
@@ -497,8 +495,8 @@ class App(QtCore.QObject):
         self.worker2 = Worker(self, name="worker2")
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"),
+        self.thr2.started.connect(self.worker2.run)
+        self.thr2.started.connect(
                      lambda: self.worker_task.emit({'fcn': self.version_check,
                                                     'params': [],
                                                     'worker_name': "worker2"}))
@@ -609,12 +607,12 @@ class App(QtCore.QObject):
 
         self.init_tcl()
 
-        self.ui.shell_dock = QtGui.QDockWidget("FlatCAM TCL Shell")
+        self.ui.shell_dock = QtWidgets.QDockWidget("FlatCAM TCL Shell")
         self.ui.shell_dock.setWidget(self.shell)
-        self.ui.shell_dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
-        self.ui.shell_dock.setFeatures(QtGui.QDockWidget.DockWidgetMovable |
-                             QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetClosable)
-        self.ui.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.ui.shell_dock)
+        self.ui.shell_dock.setAllowedAreas(QtCore.Qt.DockWidgetArea.AllDockWidgetAreas)
+        self.ui.shell_dock.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable |
+                             QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetFloatable | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.ui.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, self.ui.shell_dock)
 
 
         if self.defaults["shell_at_startup"]:
@@ -976,12 +974,12 @@ class App(QtCore.QObject):
         self.save_defaults()
 
     def message_dialog(self, title, message, kind="info"):
-        icon = {"info": QtGui.QMessageBox.Information,
-                "warning": QtGui.QMessageBox.Warning,
-                "error": QtGui.QMessageBox.Critical}[str(kind)]
-        dlg = QtGui.QMessageBox(icon, title, message, parent=self.ui)
+        icon = {"info": QtWidgets.QMessageBox.Icon.Information,
+                "warning": QtWidgets.QMessageBox.Icon.Warning,
+                "error": QtWidgets.QMessageBox.Icon.Critical}[str(kind)]
+        dlg = QtWidgets.QMessageBox(icon, title, message, parent=self.ui)
         dlg.setText(message)
-        dlg.exec_()
+        dlg.exec()
 
     def register_recent(self, kind, filename):
 
@@ -1091,7 +1089,7 @@ class App(QtCore.QObject):
         self.log.debug("Moving new object back to main thread.")
 
         # Move the object to the main thread and let the app know that it is available.
-        obj.moveToThread(QtGui.QApplication.instance().thread())
+        obj.moveToThread(QtWidgets.QApplication.instance().thread())
         self.object_created.emit(obj, self.plot)
 
         return obj
@@ -1124,25 +1122,25 @@ class App(QtCore.QObject):
         version_date_str = self.version_date_str
         version_year = self.version_date[0]
 
-        class AboutDialog(QtGui.QDialog):
+        class AboutDialog(QtWidgets.QDialog):
             def __init__(self, parent=None):
-                QtGui.QDialog.__init__(self, parent)
+                QtWidgets.QDialog.__init__(self, parent)
 
                 # Icon and title
                 self.setWindowIcon(parent.app_icon)
                 self.setWindowTitle("FlatCAM")
 
-                layout1 = QtGui.QVBoxLayout()
+                layout1 = QtWidgets.QVBoxLayout()
                 self.setLayout(layout1)
 
-                layout2 = QtGui.QHBoxLayout()
+                layout2 = QtWidgets.QHBoxLayout()
                 layout1.addLayout(layout2)
 
-                logo = QtGui.QLabel()
+                logo = QtWidgets.QLabel()
                 logo.setPixmap(QtGui.QPixmap('share/flatcam_icon256.png'))
                 layout2.addWidget(logo, stretch=0)
 
-                title = QtGui.QLabel(
+                title = QtWidgets.QLabel(
                     "<font size=8><B>FlatCAM</B></font><BR>"
                     "Version {} ({})<BR>"
                     "<BR>"
@@ -1157,15 +1155,15 @@ class App(QtCore.QObject):
                 )
                 layout2.addWidget(title, stretch=1)
 
-                layout3 = QtGui.QHBoxLayout()
+                layout3 = QtWidgets.QHBoxLayout()
                 layout1.addLayout(layout3)
                 layout3.addStretch()
-                okbtn = QtGui.QPushButton("Close")
+                okbtn = QtWidgets.QPushButton("Close")
                 layout3.addWidget(okbtn)
 
                 okbtn.clicked.connect(self.accept)
 
-        AboutDialog(self.ui).exec_()
+        AboutDialog(self.ui).exec()
 
     def on_file_savedefaults(self):
         """
@@ -1178,7 +1176,7 @@ class App(QtCore.QObject):
         self.save_defaults()
 
     def on_file_exit(self):
-        QtGui.qApp.quit()
+        QtWidgets.QApplication.instance().quit()
 
     def save_defaults(self, silent=False):
         """
@@ -1415,16 +1413,16 @@ class App(QtCore.QObject):
             factor = 25.4
 
         # Changing project units. Warn user.
-        msgbox = QtGui.QMessageBox()
+        msgbox = QtWidgets.QMessageBox()
         msgbox.setText("<B>Change project units ...</B>")
         msgbox.setInformativeText("Changing the units of the project causes all geometrical "
                                   "properties of all objects to be scaled accordingly. Continue?")
-        msgbox.setStandardButtons(QtGui.QMessageBox.Cancel | QtGui.QMessageBox.Ok)
-        msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Cancel | QtWidgets.QMessageBox.StandardButton.Ok)
+        msgbox.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
 
-        response = msgbox.exec_()
+        response = msgbox.exec()
 
-        if response == QtGui.QMessageBox.Ok:
+        if response == QtWidgets.QMessageBox.StandardButton.Ok:
             self.options_read_form()
             scale_options(factor)
             self.options_write_form()
@@ -1660,8 +1658,8 @@ class App(QtCore.QObject):
         try:
             App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
                 event.button, event.x, event.y, event.xdata, event.ydata))
-            modifiers = QtGui.QApplication.keyboardModifiers()
-            if modifiers == QtCore.Qt.ControlModifier:
+            modifiers = QtWidgets.QApplication.keyboardModifiers()
+            if modifiers == QtCore.Qt.KeyboardModifier.ControlModifier:
                 self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.xdata, event.ydata))
 
         except Exception as e:
@@ -1726,10 +1724,10 @@ class App(QtCore.QObject):
         App.log.debug("on_fileopengerber()")
 
         try:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open Gerber",
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open Gerber",
                                                          directory=self.get_last_folder())
         except TypeError:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open Gerber")
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open Gerber")
 
         # The Qt methods above will return a QString which can cause problems later.
         # So far json.dump() will fail to serialize it.
@@ -1753,10 +1751,10 @@ class App(QtCore.QObject):
         App.log.debug("on_fileopenexcellon()")
 
         try:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open Excellon",
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open Excellon",
                                                          directory=self.get_last_folder())
         except TypeError:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open Excellon")
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open Excellon")
 
         # The Qt methods above will return a QString which can cause problems later.
         # So far json.dump() will fail to serialize it.
@@ -1780,10 +1778,10 @@ class App(QtCore.QObject):
         App.log.debug("on_fileopengcode()")
 
         try:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open G-Code",
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open G-Code",
                                                          directory=self.get_last_folder())
         except TypeError:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open G-Code")
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open G-Code")
 
         # The Qt methods above will return a QString which can cause problems later.
         # So far json.dump() will fail to serialize it.
@@ -1807,10 +1805,10 @@ class App(QtCore.QObject):
         App.log.debug("on_file_openproject()")
 
         try:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open Project",
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open Project",
                                                          directory=self.get_last_folder())
         except TypeError:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Open Project")
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Open Project")
 
         # The Qt methods above will return a QString which can cause problems later.
         # So far json.dump() will fail to serialize it.
@@ -1839,31 +1837,31 @@ class App(QtCore.QObject):
         if obj is None:
             self.inform.emit("WARNING: No object selected.")
             msg = "Please Select a Geometry object to export"
-            msgbox = QtGui.QMessageBox()
+            msgbox = QtWidgets.QMessageBox()
             msgbox.setInformativeText(msg)
-            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
-            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
-            msgbox.exec_()
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+            msgbox.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
+            msgbox.exec()
             return
 
         # Check for more compatible types and add as required
         if (not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMCNCjob)
             and not isinstance(obj, FlatCAMExcellon)):
             msg = "ERROR: Only Geometry, Gerber and CNCJob objects can be used."
-            msgbox = QtGui.QMessageBox()
+            msgbox = QtWidgets.QMessageBox()
             msgbox.setInformativeText(msg)
-            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
-            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
-            msgbox.exec_()
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+            msgbox.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
+            msgbox.exec()
             return
 
         name = self.collection.get_active().options["name"]
 
         try:
-            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG",
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(caption="Export SVG",
                                                          directory=self.get_last_folder(), filter="*.svg")
         except TypeError:
-            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG")
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(caption="Export SVG")
 
         filename = str(filename)
 
@@ -1883,10 +1881,10 @@ class App(QtCore.QObject):
         App.log.debug("on_file_importsvg()")
 
         try:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Import SVG",
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Import SVG",
                                                          directory=self.get_last_folder())
         except TypeError:
-            filename = QtGui.QFileDialog.getOpenFileName(caption="Import SVG")
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(caption="Import SVG")
 
         filename = str(filename)
 
@@ -1926,10 +1924,10 @@ class App(QtCore.QObject):
         self.report_usage("on_file_saveprojectas")
 
         try:
-            filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...",
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(caption="Save Project As ...",
                                                          directory=self.get_last_folder())
         except TypeError:
-            filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...")
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(caption="Save Project As ...")
 
         filename = str(filename)
 
@@ -1942,12 +1940,12 @@ class App(QtCore.QObject):
 
         msg = "File exists. Overwrite?"
         if exists:
-            msgbox = QtGui.QMessageBox()
+            msgbox = QtWidgets.QMessageBox()
             msgbox.setInformativeText(msg)
-            msgbox.setStandardButtons(QtGui.QMessageBox.Cancel | QtGui.QMessageBox.Ok)
-            msgbox.setDefaultButton(QtGui.QMessageBox.Cancel)
-            result = msgbox.exec_()
-            if result == QtGui.QMessageBox.Cancel:
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Cancel | QtWidgets.QMessageBox.StandardButton.Ok)
+            msgbox.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Cancel)
+            result = msgbox.exec()
+            if result == QtWidgets.QMessageBox.StandardButton.Cancel:
                 return
 
         self.save_project(filename)
@@ -2459,7 +2457,7 @@ class App(QtCore.QObject):
                 QtCore.QTimer.singleShot(timeout, report_quit)
 
             #### Block ####
-            loop.exec_()
+            loop.exec()
 
             # Restore exception management
             sys.excepthook = oeh
@@ -2481,7 +2479,7 @@ class App(QtCore.QObject):
         #
         #     if timeout is not None:
         #         QtCore.QTimer.singleShot(timeout, report_quit)
-        #     loop.exec_()
+        #     loop.exec()
         #
         #     if status['timed_out']:
         #         raise Exception('Timed out!')
@@ -4254,8 +4252,8 @@ class App(QtCore.QObject):
         # self.ui.recent.show()
 
     def setup_component_editor(self):
-        label = QtGui.QLabel("Choose an item from Project")
-        label.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        label = QtWidgets.QLabel("Choose an item from Project")
+        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.ui.selected_scroll_area.setWidget(label)
 
     def setup_obj_classes(self):
@@ -4393,9 +4391,9 @@ class App(QtCore.QObject):
 
 # def main():
 #
-#     app = QtGui.QApplication(sys.argv)
+#     app = QtWidgets.QApplication(sys.argv)
 #     fc = App()
-#     sys.exit(app.exec_())
+#     sys.exit(app.exec())
 #
 #
 # if __name__ == '__main__':

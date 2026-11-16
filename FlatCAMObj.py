@@ -7,7 +7,7 @@
 ############################################################
 
 from io import StringIO
-from PyQt4 import QtCore
+from PyQt6 import QtCore
 from copy import copy
 from ObjectUI import *
 import FlatCAMApp
@@ -541,7 +541,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             if invert:
                 if type(geom) is MultiPolygon:
                     pl = []
-                    for p in geom:
+                    for p in geom.geoms:
                         pl.append(Polygon(p.exterior.coords[::-1], p.interiors))
                     geom = MultiPolygon(pl)
                 elif type(geom) is Polygon:
@@ -798,13 +798,13 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                 if drill.get('tool') == tool:
                     drill_cnt += 1
 
-            id = QtGui.QTableWidgetItem(tool)
-            id.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+            id = QtWidgets.QTableWidgetItem(tool)
+            id.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.ui.tools_table.setItem(i, 0, id)  # Tool name/id
-            dia = QtGui.QTableWidgetItem(str(self.tools[tool]['C']))
-            dia.setFlags(QtCore.Qt.ItemIsEnabled)
-            drill_count = QtGui.QTableWidgetItem('%d' % drill_cnt)
-            drill_count.setFlags(QtCore.Qt.ItemIsEnabled)
+            dia = QtWidgets.QTableWidgetItem(str(self.tools[tool]['C']))
+            dia.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled)
+            drill_count = QtWidgets.QTableWidgetItem('%d' % drill_cnt)
+            drill_count.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled)
             self.ui.tools_table.setItem(i, 1, dia)  # Diameter
             self.ui.tools_table.setItem(i, 2, drill_count)  # Number of drills per tool
             i += 1
@@ -817,9 +817,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.ui.tools_table.resizeColumnsToContents()
         self.ui.tools_table.resizeRowsToContents()
         horizontal_header = self.ui.tools_table.horizontalHeader()
-        horizontal_header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-        horizontal_header.setResizeMode(1, QtGui.QHeaderView.Stretch)
-        horizontal_header.setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
+        horizontal_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        horizontal_header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        horizontal_header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         # horizontal_header.setStretchLastSection(True)
         self.ui.tools_table.verticalHeader().hide()
         self.ui.tools_table.setSortingEnabled(True)
@@ -1117,10 +1117,12 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.read_form()
 
         try:
-            filename = str(QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...",
-                                                         directory=self.app.defaults["last_folder"]))
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(caption="Export G-Code ...",
+                                                         directory=self.app.defaults["last_folder"])
         except TypeError:
-            filename = str(QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ..."))
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(caption="Export G-Code ...")
+
+        filename = str(filename)
 
         preamble = str(self.ui.prepend_text.get_value())
         postamble = str(self.ui.append_text.get_value())
@@ -1160,7 +1162,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
             yield line
 
-        raise StopIteration
+        return
 
     def export_gcode(self, filename, preamble='', postamble='', processor=''):
 
@@ -1454,7 +1456,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 if isinstance(geo, Polygon):
                     yield geo
 
-            raise StopIteration
+            return
 
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):

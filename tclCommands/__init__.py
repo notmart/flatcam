@@ -50,11 +50,7 @@ import tclCommands.TclCommandVersion
 import tclCommands.TclCommandWriteGCode
 
 
-__all__ = []
-
-for loader, name, is_pkg in pkgutil.walk_packages(__path__):
-    module = loader.find_module(name).load_module(name)
-    __all__.append(name)
+__all__ = [name for _, name, _ in pkgutil.iter_modules(__path__)]
 
 
 def register_all_commands(app, commands):

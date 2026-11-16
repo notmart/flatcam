@@ -10,7 +10,7 @@
 #import traceback
 
 from io import StringIO
-from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
+from numpy import arctan2, inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
     transpose
 from numpy.linalg import solve, norm
 from matplotlib.figure import Figure
@@ -31,7 +31,11 @@ from rtree import index as rtindex
 from shapely.geometry import Polygon, LineString, Point, LinearRing
 from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.geometry import box as shply_box
-from shapely.ops import cascaded_union, unary_union
+from shapely.ops import unary_union
+try:
+    from shapely.ops import cascaded_union
+except ImportError:  # shapely >= 2.0
+    cascaded_union = unary_union
 import shapely.affinity as affinity
 from shapely.wkt import loads as sloads
 from shapely.wkt import dumps as sdumps
@@ -320,6 +324,15 @@ class Geometry(object):
         if reset:
             self.flat_geometry = []
 
+        # Shapely >= 2.0: multi-part geometries are no longer iterable.
+        # Expand them explicitly to preserve the previous behaviour.
+        if hasattr(geometry, 'geoms'):
+            for geo in geometry.geoms:
+                self.flatten(geometry=geo,
+                             reset=False,
+                             pathonly=pathonly)
+            return self.flat_geometry
+
         ## If iterable, expand recursively.
         try:
             for geo in geometry:
@@ -514,14 +527,12 @@ class Geometry(object):
             return None
 
         # current can be a MultiPolygon
-        try:
-            for p in current:
+        if current.geom_type == 'MultiPolygon':
+            for p in current.geoms:
                 geoms.insert(p.exterior)
                 for i in p.interiors:
                     geoms.insert(i)
-
-        # Not a Multipolygon. Must be a Polygon
-        except TypeError:
+        else:
             geoms.insert(current.exterior)
             for i in current.interiors:
                 geoms.insert(i)
@@ -533,14 +544,12 @@ class Geometry(object):
             if current.area > 0:
 
                 # current can be a MultiPolygon
-                try:
-                    for p in current:
+                if current.geom_type == 'MultiPolygon':
+                    for p in current.geoms:
                         geoms.insert(p.exterior)
                         for i in p.interiors:
                             geoms.insert(i)
-
-                # Not a Multipolygon. Must be a Polygon
-                except TypeError:
+                else:
                     geoms.insert(current.exterior)
                     for i in current.interiors:
                         geoms.insert(i)
@@ -608,11 +617,8 @@ class Geometry(object):
                 #geoms.append(path)
                 #geoms.insert(path)
                 # path can be a collection of paths.
-                try:
-                    for p in path:
-                        geoms.insert(p)
-                except TypeError:
-                    geoms.insert(path)
+                for p in autolist(path):
+                    geoms.insert(p)
 
             radius += tooldia * (1 - overlap)
 
@@ -789,7 +795,7 @@ class Geometry(object):
                 # then reverse coordinates.
                 # but prefer the first one if last == first
                 if pt != candidate.coords[0] and pt == candidate.coords[-1]:
-                    candidate.coords = list(candidate.coords)[::-1]
+                    candidate = type(candidate)(list(candidate.coords)[::-1])
 
                 # Straight line from current_pt to pt.
                 # Is the toolpath inside the geometry?
@@ -800,7 +806,7 @@ class Geometry(object):
                     #log.debug("Walk to path #%d is inside. Joining." % path_count)
 
                     # Completely inside. Append...
-                    geo.coords = list(geo.coords) + list(candidate.coords)
+                    geo = type(geo)(list(geo.coords) + list(candidate.coords))
                     # try:
                     #     last = optimized_paths[-1]
                     #     last.coords = list(last.coords) + list(geo.coords)
@@ -872,22 +878,22 @@ class Geometry(object):
                 if type(left) == LineString:
                     if left.coords[0] == geo.coords[0]:
                         storage.remove(left)
-                        geo.coords = list(geo.coords)[::-1] + list(left.coords)
+                        geo = type(geo)(list(geo.coords)[::-1] + list(left.coords))
                         continue
 
                     if left.coords[-1] == geo.coords[0]:
                         storage.remove(left)
-                        geo.coords = list(left.coords) + list(geo.coords)
+                        geo = type(geo)(list(left.coords) + list(geo.coords))
                         continue
 
                     if left.coords[0] == geo.coords[-1]:
                         storage.remove(left)
-                        geo.coords = list(geo.coords) + list(left.coords)
+                        geo = type(geo)(list(geo.coords) + list(left.coords))
                         continue
 
                     if left.coords[-1] == geo.coords[-1]:
                         storage.remove(left)
-                        geo.coords = list(geo.coords) + list(left.coords)[::-1]
+                        geo = type(geo)(list(geo.coords) + list(left.coords)[::-1])
                         continue
 
                 _, right = storage.nearest(geo.coords[-1])
@@ -898,22 +904,22 @@ class Geometry(object):
                 if type(right) == LineString:
                     if right.coords[0] == geo.coords[-1]:
                         storage.remove(right)
-                        geo.coords = list(geo.coords) + list(right.coords)
+                        geo = type(geo)(list(geo.coords) + list(right.coords))
                         continue
 
                     if right.coords[-1] == geo.coords[-1]:
                         storage.remove(right)
-                        geo.coords = list(geo.coords) + list(right.coords)[::-1]
+                        geo = type(geo)(list(geo.coords) + list(right.coords)[::-1])
                         continue
 
                     if right.coords[0] == geo.coords[0]:
                         storage.remove(right)
-                        geo.coords = list(geo.coords)[::-1] + list(right.coords)
+                        geo = type(geo)(list(geo.coords)[::-1] + list(right.coords))
                         continue
 
                     if right.coords[-1] == geo.coords[0]:
                         storage.remove(right)
-                        geo.coords = list(left.coords) + list(geo.coords)
+                        geo = type(geo)(list(left.coords) + list(geo.coords))
                         continue
 
                 # right is either a LinearRing or it does not connect
@@ -3267,7 +3273,7 @@ class CNCjob(Geometry):
                 # but prefer the first one if last point == first point
                 # then reverse coordinates.
                 if pt != geo.coords[0] and pt == geo.coords[-1]:
-                    geo.coords = list(geo.coords)[::-1]
+                    geo = type(geo)(list(geo.coords)[::-1])
 
                 #---------- Single depth/pass --------
                 if not multidepth:
@@ -3323,13 +3329,13 @@ class CNCjob(Geometry):
                         # Reverse coordinates if not a loop so we can continue
                         # cutting without returning to the beginning.
                         if type(geo) == LineString:
-                            geo.coords = list(geo.coords)[::-1]
+                            geo = type(geo)(list(geo.coords)[::-1])
                             reverse = True
 
                     # If geometry is reversed, revert.
                     if reverse:
                         if type(geo) == LineString:
-                            geo.coords = list(geo.coords)[::-1]
+                            geo = type(geo)(list(geo.coords)[::-1])
 
                     # Lift the tool
                     self.gcode += "G00 Z%.4f\n" % self.z_move
@@ -3794,10 +3800,10 @@ class CNCjob(Geometry):
 #     return [xmin, ymin, xmax, ymax]
 
 def get_bounds(geometry_list):
-    xmin = Inf
-    ymin = Inf
-    xmax = -Inf
-    ymax = -Inf
+    xmin = inf
+    ymin = inf
+    xmax = -inf
+    ymax = -inf
 
     #print "Getting bounds of:", str(geometry_set)
     for gs in geometry_list:
@@ -4204,6 +4210,9 @@ def parse_gerber_number(strnumber, frac_digits):
 
 
 def autolist(obj):
+    # Shapely >= 2.0: multi-part geometries are not iterable.
+    if hasattr(obj, 'geoms'):
+        return list(obj.geoms)
     try:
         _ = iter(obj)
         return obj

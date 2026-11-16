@@ -40,9 +40,12 @@ def PolygonPath(polygon):
         vals = ones(n, dtype=Path.code_type) * Path.LINETO
         vals[0] = Path.MOVETO
         return vals
+    def _coords(ob):
+        # Shapely 2.0 removed the array interface from rings; use .coords.
+        return ob.coords if hasattr(ob, 'coords') else ob
     vertices = concatenate(
-                    [asarray(this.exterior)] 
-                    + [asarray(r) for r in this.interiors])
+                    [asarray(_coords(this.exterior))] 
+                    + [asarray(_coords(r)) for r in this.interiors])
     codes = concatenate(
                 [coding(this.exterior)] 
                 + [coding(r) for r in this.interiors])

@@ -1,6 +1,6 @@
 import sys
 import unittest
-from PyQt4 import QtGui
+from PyQt6 import QtGui, QtWidgets
 from FlatCAMApp import App
 from FlatCAMObj import FlatCAMGeometry, FlatCAMCNCjob
 from ObjectUI import GerberObjectUI, GeometryObjectUI
@@ -12,9 +12,12 @@ from shapely.geometry import LineString, LinearRing, Polygon, MultiPolygon
 
 class PolyPaintTestCase(unittest.TestCase):
 
-    def setUp(self):
-        self.app = QtGui.QApplication(sys.argv)
+    @classmethod
+    def setUpClass(cls):
+        # PyQt6 allows only a single QApplication instance per process.
+        cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
+    def setUp(self):
         # Create App, keep app defaults (do not load
         # user-defined defaults).
         self.fc = App(user_defaults=False)

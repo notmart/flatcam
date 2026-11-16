@@ -18,7 +18,7 @@ class LoudDict(dict):
 
     def __setitem__(self, key, value):
         """
-        Overridden __setitem__ method. Will emit 'changed(QString)'
+        Overridden __setitem__ method. Will emit 'changed(str)'
         if the item was changed, with key as parameter.
         """
         if key in self and self.__getitem__(key) == value:

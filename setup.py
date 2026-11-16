@@ -56,11 +56,12 @@ setup(
     ],
 
     install_requires=[
+        'PyQt6',
         'simplejson',
         'numpy>=1.8',
         'scipy',
-        'matplotlib>=1.3.1',
-        'shapely>=1.3'
+        'matplotlib>=3.5',
+        'shapely>=1.3',
         'rtree',
         'svg.path'
     ],
