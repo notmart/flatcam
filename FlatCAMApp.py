@@ -712,7 +712,18 @@ class App(QtCore.QObject):
 
         self.ui.updategeo_btn.setEnabled(True)
 
-        self.draw.edit_fcgeometry(self.collection.get_active())
+        geo = self.collection.get_active()
+
+        # Hide the object's own plot while it is being edited. All plot
+        # axes share a transparent background, so leaving it visible would
+        # make the un-edited geometry show through the editor (deleted
+        # shapes would still appear). Remember the setting to restore it.
+        if not hasattr(geo, '_plot_before_edit'):
+            geo._plot_before_edit = geo.options['plot']
+        geo.options['plot'] = False
+        geo.plot()
+
+        self.draw.edit_fcgeometry(geo)
 
     def editor2geometry(self):
         """
@@ -730,6 +741,10 @@ class App(QtCore.QObject):
 
         self.ui.updategeo_btn.setEnabled(False)
 
+        # Restore the object's plot setting and show the updated geometry.
+        if hasattr(geo, '_plot_before_edit'):
+            geo.options['plot'] = geo._plot_before_edit
+            del geo._plot_before_edit
         geo.plot()
 
     def get_last_folder(self):

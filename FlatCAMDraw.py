@@ -916,6 +916,8 @@ class FlatCAMDraw(QtCore.QObject):
     def deactivate(self):
         self.disconnect_canvas_event_handlers()
         self.clear()
+        # Restore the editor below the plotted objects when not editing.
+        self.axes.set_zorder(0)
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
@@ -976,6 +978,10 @@ class FlatCAMDraw(QtCore.QObject):
                 self.add_shape(DrawToolShape(shape))
 
         self.replot()
+        # Put the editor on top of the plotted objects so that the
+        # object being edited does not show through (otherwise deleted
+        # shapes would still be visible underneath the editor).
+        self.axes.set_zorder(1)
         self.drawing_toolbar.setDisabled(False)
         self.snap_toolbar.setDisabled(False)
 
@@ -1153,7 +1159,7 @@ class FlatCAMDraw(QtCore.QObject):
             return
 
         ### Delete selected object
-        if event.key == '-':
+        if event.key == '-' or event.key == 'delete':
             self.delete_selected()
             self.replot()
 
@@ -1319,7 +1325,12 @@ class FlatCAMDraw(QtCore.QObject):
             self.selected.remove(shape)
 
     def replot(self):
-        self.axes = self.canvas.new_axes("draw")
+        # Reuse the existing axes instead of adding a new one on every
+        # replot. Matplotlib no longer replaces axes that share a label,
+        # so creating a new one each time left stale geometry on screen
+        # (deleted shapes kept showing up). plot_all() clears the axes.
+        if self.axes is None or self.axes not in self.canvas.figure.axes:
+            self.axes = self.canvas.new_axes("draw")
         self.plot_all()
 
     @staticmethod
