@@ -640,6 +640,16 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         except TypeError:
             geometry = [geometry]
 
+        # Shapely >= 2.0 multi-part geometries are not iterable, so
+        # expand them explicitly into their single-polygon components.
+        expanded = []
+        for geom in geometry:
+            if hasattr(geom, 'geoms'):
+                expanded.extend(geom.geoms)
+            else:
+                expanded.append(geom)
+        geometry = expanded
+
         if self.options["multicolored"]:
             linespec = '-'
         else:
@@ -1025,6 +1035,16 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             _ = iter(self.solid_geometry)
         except TypeError:
             self.solid_geometry = [self.solid_geometry]
+
+        # Shapely >= 2.0 multi-part geometries are not iterable, so
+        # expand them explicitly into their single-polygon components.
+        expanded = []
+        for geom in self.solid_geometry:
+            if hasattr(geom, 'geoms'):
+                expanded.extend(geom.geoms)
+            else:
+                expanded.append(geom)
+        self.solid_geometry = expanded
 
         # Plot excellon (All polygons?)
         if self.options["solid"]:
@@ -1664,6 +1684,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         return factor
 
     def plot_element(self, element):
+        # Shapely >= 2.0 multi-part geometries are not iterable.
+        if hasattr(element, 'geoms'):
+            for sub_el in element.geoms:
+                self.plot_element(sub_el)
+            return
+
         try:
             for sub_el in element:
                 self.plot_element(sub_el)
